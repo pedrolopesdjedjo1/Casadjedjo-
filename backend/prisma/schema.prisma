@@ -15,4 +15,10 @@ model User {
   photo     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  role      UserRole @default(CLIENT)
+}
+enum UserRole {
+  CLIENT
+  PROFESSIONAL
+  ADMIN
 }
