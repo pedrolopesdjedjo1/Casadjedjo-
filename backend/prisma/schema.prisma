@@ -7,6 +7,72 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =====================================================
+// ENUMS
+// =====================================================
+
+enum UserRole {
+  CLIENT
+  PROFESSIONAL
+  ADMIN
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+enum QuoteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ContractStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum NotificationType {
+  MESSAGE
+  SERVICE_REQUEST
+  QUOTE
+  BOOKING
+  CONTRACT
+  REVIEW
+  SYSTEM
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  BUSY
+  UNAVAILABLE
+}
+
+// =====================================================
+// USER
+// =====================================================
+
 model User {
   id                  String              @id @default(uuid())
   name                String
@@ -15,69 +81,308 @@ model User {
   phone               String?
   photo               String?
   role                UserRole            @default(CLIENT)
+
   professionalProfile ProfessionalProfile?
+
+  serviceRequests     ServiceRequest[]    @relation("ClientRequests")
+  quotes              Quote[]             @relation("ClientQuotes")
+  bookings            Booking[]           @relation("ClientBookings")
+  contractsAsClient   Contract[]           @relation("ClientContracts")
+  reviewsGiven        Review[]            @relation("ReviewsGiven")
+  reviewsReceived     Review[]            @relation("ReviewsReceived")
+  notifications       Notification[]
+  sentMessages        Message[]           @relation("SentMessages")
+  receivedMessages    Message[]           @relation("ReceivedMessages")
+
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 }
 
-enum UserRole {
-  CLIENT
-  PROFESSIONAL
-  ADMIN
-}
+// =====================================================
+// PROFESSIONAL PROFILE
+// =====================================================
 
 model ProfessionalProfile {
-  id               String   @id @default(uuid())
-  userId           String   @unique
-  categoryId       String
-  specialty        String
-  experience       Int?
-  description      String?
-  portfolio        String?
-  certificates     String?
-  price            Decimal?
-  availability     String?
-  serviceArea      String?
-  latitude         Float?
-  longitude        Float?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  portfolioItems PortfolioItem[]
+  id                String              @id @default(uuid())
+  userId            String              @unique
+  categoryId        String
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category  @relation(fields: [categoryId], references: [id])
-  services Service[]
+  specialty         String
+  experience        Int?
+  description       String?
+
+  price             Decimal?
+  availability      String?
+  availabilityStatus AvailabilityStatus  @default(AVAILABLE)
+
+  serviceArea       String?
+
+  latitude          Float?
+  longitude         Float?
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category          Category             @relation(fields: [categoryId], references: [id])
+
+  services          Service[]
+  portfolioItems    PortfolioItem[]
+  certificates      Certificate[]
+
+  serviceRequests   ServiceRequest[]     @relation("ProfessionalRequests")
+  quotes            Quote[]              @relation("ProfessionalQuotes")
+  bookings          Booking[]            @relation("ProfessionalBookings")
+  contracts         Contract[]           @relation("ProfessionalContracts")
+  reviews           Review[]             @relation("ProfessionalReviews")
+
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 }
 
-model Service {
-  id             String   @id @default(uuid())
-  professionalId String
-  name           String
-  description    String?
-  price          Decimal?
-  duration       Int?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-}
+// =====================================================
+// CATEGORY / PROFESSION
+// =====================================================
 
 model Category {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  description   String?
-  createdAt     DateTime @default(now())
-
-  professionals ProfessionalProfile[]
-}
-model PortfolioItem {
-  id             String   @id @default(uuid())
-  professionalId String
-  title          String
+  id             String                 @id @default(uuid())
+  name           String                 @unique
   description    String?
-  imageUrl       String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 
-  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionals  ProfessionalProfile[]
+
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+}
+
+// =====================================================
+// SERVICES
+// =====================================================
+
+model Service {
+  id               String              @id @default(uuid())
+  professionalId   String
+
+  name             String
+  description      String?
+  price            Decimal?
+  duration         Int?
+
+  professional     ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  requests         ServiceRequest[]
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// PORTFOLIO
+// =====================================================
+
+model PortfolioItem {
+  id               String              @id @default(uuid())
+  professionalId   String
+
+  title            String
+  description      String?
+  imageUrl         String?
+
+  professional     ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// CERTIFICATES
+// =====================================================
+
+model Certificate {
+  id               String              @id @default(uuid())
+  professionalId   String
+
+  name             String
+  issuer           String?
+  issueDate        DateTime?
+  expiryDate       DateTime?
+  documentUrl      String?
+
+  professional     ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// SERVICE REQUEST
+// =====================================================
+
+model ServiceRequest {
+  id               String              @id @default(uuid())
+
+  clientId         String
+  professionalId   String
+  serviceId        String?
+
+  title            String
+  description      String
+
+  location         String?
+  latitude         Float?
+  longitude        Float?
+
+  preferredDate    DateTime?
+  budget           Decimal?
+
+  status           RequestStatus        @default(PENDING)
+
+  client           User                @relation("ClientRequests", fields: [clientId], references: [id])
+  professional     ProfessionalProfile @relation("ProfessionalRequests", fields: [professionalId], references: [id])
+  service          Service?            @relation(fields: [serviceId], references: [id])
+
+  quotes           Quote[]
+  bookings         Booking[]
+  contracts        Contract[]
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// QUOTES / ORÇAMENTOS
+// =====================================================
+
+model Quote {
+  id               String              @id @default(uuid())
+
+  requestId        String
+  clientId         String
+  professionalId   String
+
+  amount           Decimal
+  description      String?
+  estimatedDays    Int?
+
+  status           QuoteStatus         @default(PENDING)
+
+  request          ServiceRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  client           User                @relation("ClientQuotes", fields: [clientId], references: [id])
+  professional     ProfessionalProfile @relation("ProfessionalQuotes", fields: [professionalId], references: [id])
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// BOOKINGS / AGENDAMENTOS
+// =====================================================
+
+model Booking {
+  id               String              @id @default(uuid())
+
+  requestId        String
+  clientId         String
+  professionalId   String
+
+  startAt          DateTime
+  endAt            DateTime?
+
+  status           BookingStatus       @default(PENDING)
+  notes            String?
+
+  request          ServiceRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  client           User                @relation("ClientBookings", fields: [clientId], references: [id])
+  professional     ProfessionalProfile @relation("ProfessionalBookings", fields: [professionalId], references: [id])
+
+  contract         Contract?
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// CONTRACT / CONTRATAÇÃO
+// =====================================================
+
+model Contract {
+  id               String              @id @default(uuid())
+
+  requestId        String
+  clientId         String
+  professionalId   String
+  bookingId        String?             @unique
+
+  amount           Decimal
+  startDate        DateTime?
+  endDate          DateTime?
+
+  status           ContractStatus      @default(ACTIVE)
+
+  request          ServiceRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  client           User                @relation("ClientContracts", fields: [clientId], references: [id])
+  professional     ProfessionalProfile @relation("ProfessionalContracts", fields: [professionalId], references: [id])
+  booking          Booking?            @relation(fields: [bookingId], references: [id])
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// CHAT / MENSAGENS
+// =====================================================
+
+model Message {
+  id               String              @id @default(uuid())
+
+  senderId         String
+  receiverId       String
+
+  content          String
+  type             MessageType         @default(TEXT)
+  attachmentUrl    String?
+
+  isRead           Boolean             @default(false)
+
+  sender           User                @relation("SentMessages", fields: [senderId], references: [id])
+  receiver         User                @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  createdAt        DateTime            @default(now())
+}
+
+// =====================================================
+// AVALIAÇÕES
+// =====================================================
+
+model Review {
+  id               String              @id @default(uuid())
+
+  reviewerId       String
+  professionalId   String
+
+  rating           Int
+  comment          String?
+
+  reviewer         User                @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  professional     ProfessionalProfile @relation("ProfessionalReviews", fields: [professionalId], references: [id])
+  receivedBy       User                @relation("ReviewsReceived", fields: [reviewerId], references: [id])
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+// =====================================================
+// NOTIFICAÇÕES
+// =====================================================
+
+model Notification {
+  id               String              @id @default(uuid())
+
+  userId           String
+  type             NotificationType
+
+  title            String
+  message          String
+
+  isRead           Boolean             @default(false)
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime            @default(now())
 }
