@@ -6,26 +6,30 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  phone     String?
-  photo     String?
+  id                  String              @id @default(uuid())
+  name                String
+  email               String              @unique
+  password            String
+  phone               String?
+  photo               String?
+  role                UserRole            @default(CLIENT)
   professionalProfile ProfessionalProfile?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  role      UserRole @default(CLIENT)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 }
+
 enum UserRole {
   CLIENT
   PROFESSIONAL
   ADMIN
 }
+
 model ProfessionalProfile {
   id               String   @id @default(uuid())
   userId           String   @unique
+  categoryId       String
   specialty        String
   experience       Int?
   description      String?
@@ -38,11 +42,12 @@ model ProfessionalProfile {
   longitude        Float?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category  @relation(fields: [categoryId], references: [id])
   services Service[]
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 model Service {
   id             String   @id @default(uuid())
   professionalId String
@@ -55,6 +60,7 @@ model Service {
 
   professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 }
+
 model Category {
   id            String   @id @default(uuid())
   name          String   @unique
