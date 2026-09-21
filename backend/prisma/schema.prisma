@@ -38,8 +38,9 @@ model ProfessionalProfile {
   longitude        Float?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  
-services Service[]
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  services Service[]
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 model Service {
@@ -53,4 +54,12 @@ model Service {
   updatedAt      DateTime @updatedAt
 
   professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+}
+model Category {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  description   String?
+  createdAt     DateTime @default(now())
+
+  professionals ProfessionalProfile[]
 }
